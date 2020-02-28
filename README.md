@@ -2,7 +2,7 @@
 
 ## Requirements
 ----
-* A linux operating system with [bash] (https://www.gnu.org/software/bash/manual/html_node/Installing-Bash.html) installed.
+* A linux operating system with bash installed.
 
 ## How to install
 ----
