@@ -1,0 +1,8 @@
+BIGGEST=$(ls -lS | awk 'NR==2{print $NF}')
+SMALLEST=$(ls -lrS | awk 'NR==2{print $NF}')
+
+printf "Biggest: "
+echo BIGGEST
+
+printf "Smallest: "
+echo SMALLEST

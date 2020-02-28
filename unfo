@@ -1,0 +1,70 @@
+#!/bin/bash
+
+if [ $# -eq 1 ] # If there is a one argument, then it is the username
+then
+	OPTIONS=""
+	USERNAME=$1
+elif [ $# -eq 2 ] # If there are two arguments, then it goes options then username
+then
+	OPTIONS=$1
+	USERNAME=$2
+else # If there are zero or more arguments, then something is wrong
+	printf "Unexpected number of arguements. Follow the pattern \"unfo [options] [username]\"\n"
+	exit 1
+fi
+
+# Determine if there are any unknown options and that the options start with a dash (-)
+if [ ! -z $OPTIONS ] && ( [[ ! $OPTIONS =~ ["^\-y"] ]] || [[ $OPTIONS =~ [".*b|c|d|e|f|g|i|j|k|l|m|o|p|q|r|v|w|x|y|z|[:upper:]|[:digit:]"] ]] )
+then
+	printf "Unexpected option. Options list must start with a dash (-) and only include s, u, n, t, h, a.\n"
+	exit 1
+fi
+
+# Determine all of the data based on the username
+FULL_NAME=$(grep "$USERNAME" /etc/passwd | cut -d ':' -f 5 | sed 's/...$//')
+LOGIN=$(last | tac | grep "$USERNAME" | tail --lines=1 | tr -s ' ' | cut -d ' ' -f 4-7)
+HOME=$(grep "$USERNAME" /etc/passwd | cut -d ':' -f 6)
+STATUS=$(last | tac | grep "$USERNAME" | tail --lines=1 | awk 'NR==1{print $NF}')
+
+# Username
+if [ -z $OPTIONS ] || [[ $OPTIONS =~ "u" ]] || [[ $OPTIONS =~ "a" ]]
+then
+	printf "%-23s" "Username:"
+	echo $USERNAME
+fi
+
+# Full Name
+if [ -z $OPTIONS ] || [[ $OPTIONS =~ "n" ]] || [[ $OPTIONS =~ "a" ]]
+then
+	printf "%-23s" "Full Name:"
+	echo $FULL_NAME
+fi
+
+# Home Directory
+if [ -z $OPTIONS ] || [[ $OPTIONS =~ "h" ]] || [[ $OPTIONS =~ "a" ]]
+then
+	printf "%-23s" "Home Directory:"
+	echo $HOME
+fi
+
+# Time of last login
+if [ -z $OPTIONS ] || [[ $OPTIONS =~ "t" ]] || [[ $OPTIONS =~ "a" ]]
+then
+	printf "%-23s" "Time of last login:"
+	echo $LOGIN
+fi
+
+# If the user is currently logged in
+if [ -z $OPTIONS ] || [[ $OPTIONS =~ "s" ]] || [[ $OPTIONS =~ "a" ]]
+then
+	printf "%-23s" "Status:"
+	if [ -z $STATUS ]
+	then
+		echo "Unknown"
+	elif [ $STATUS = "in" ]
+	then
+		echo "Logged in"
+	else
+		echo "Logged out"
+	fi
+fi
