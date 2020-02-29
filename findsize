@@ -1,8 +1,119 @@
-BIGGEST=$(ls -lS | awk 'NR==2{print $NF}')
-SMALLEST=$(ls -lrS | awk 'NR==2{print $NF}')
+#!/bin/bash
 
-printf "Biggest: "
-echo BIGGEST
+OPTIONS=$1
+DIR=$2
+VALID='b|s|a'
 
-printf "Smallest: "
-echo SMALLEST
+# A function to ensure that the passed options are valid
+# Recieves IN ORDER: options entered, valid options separated by a vertical bar
+function parse_options () {
+	# If options do not start with a dash, exit
+	if [ ! ${1:0:1} = '-' ]
+	then
+		printf "ERROR: Options must start with a dash (-).\n"
+		exit 1
+	fi
+
+	# If the a option is used, but not the only option, exit
+	if [[ $1 =~ "a" ]] && [ ${#1} -gt 2 ]
+	then
+		printf "ERROR: Cannot have option \"a\" with other options.\n"
+		exit 2
+	fi
+
+	# For every character of the entered options
+	# Starting at 1, because the character 0 should be a dash, not a letter
+	i="1"
+	j="2"
+	while [ $i -lt ${#1} ]
+	do
+		# Get the ith character
+		curr=${1:i:1}
+
+		# If the character is not in the valid options, exit
+		if [[ ! $curr =~ $2 ]]
+		then
+			printf "ERROR: Invalid option: "$curr".\n"
+			exit 3
+		fi
+
+		# If the character repeats later, exit
+		while [ $j -lt ${#1} ]
+                do
+                        if [ $curr = ${1:j:1} ]
+                        then
+                                printf "ERROR: Repeat option: "$curr".\n"
+                                exit 4
+                        fi
+                        j=$[$j+1]
+                done
+
+		# Update the positions
+		i=$[$i+1]
+		j=$[$i+1]
+	done
+}
+
+# Parse the arguments passed to start this script
+function parse_arguments () {
+	if [ $# -eq 0 ] # If there are no arguments, then do the default
+	then
+		OPTIONS="-a"
+		DIR="."
+	elif [ $# -eq 1 ] # If there is a one argument, then determine if it is a directory or options
+	then
+		if [[ -d $1 ]]
+		then
+			OPTIONS="-a"
+			DIR=$1
+		elif [[ -f $1 ]]
+		then
+			printf "%s is a file. Argument must be a directory.\n" $1
+			exit 5
+		else
+			OPTIONS=$1
+			DIR="."
+		fi
+	elif [ $# -eq 2 ] # If there are two arguments, then it goes options then directory
+	then
+		if [[ -d $2 ]]
+		then
+			OPTIONS=$1
+			DIR=$2
+		elif [[ -f $2 ]]
+		then
+			printf "%s is a file. Argument must be a directory.\n" $2
+			exit 5
+		else
+			printf "%s is not a valid directory.\n" $2
+			exit 7
+		fi
+		parse_options $OPTIONS $VALID
+	else # If there are zero or more arguments, then something is wrong
+		printf "Unexpected number of arguements. Follow the pattern \"filesize (options) (directory)\"\n"
+		exit 6
+	fi
+}
+
+# Find and print the smallest file in the directory
+function smallest () {
+	printf "Smallest: "
+	echo $(ls -lrS $DIR| awk 'NR==2{print $NF}')
+}
+
+# Find and print the biggest file in the directory
+function biggest () {
+	printf "Biggest: "
+	echo $(ls -lS $DIR | awk 'NR==2{print $NF}')
+}
+
+function main () {
+	# Smallest file
+	if [[ $OPTIONS =~ "s" ]] || [[ $OPTIONS =~ "a" ]]; then smallest; fi
+
+	# Biggest file
+	if [[ $OPTIONS =~ "b" ]] || [[ $OPTIONS =~ "a" ]]; then biggest; fi
+}
+
+parse_arguments $1 $2 $3
+main
