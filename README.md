@@ -38,3 +38,8 @@
     * -b: Find the biggest file or directory.
     * -s: Find the smallest file or directory.
     * -h: Print the help information.
+* whoowns
+  * whoowns [directory]
+  * Determine the owner of a file or directory.
+  * Options...
+    * -h: Print the help information.
