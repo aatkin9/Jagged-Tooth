@@ -1,0 +1,68 @@
+#!/bin/bash
+
+OPTIONS=""
+FILE=""
+
+# Parse the arguments passed to start this script
+function parse_arguments () {
+	# If there is a one argument, then check if it is a file/directory or the help option
+	if [ $# -eq 1 ]
+	then
+		if [ $1 = "-h" ]
+		then 
+			OPTIONS=$1
+			FILE=""
+		elif [[ -d $1 ]] || [[ -f $1 ]]
+		then
+			OPTIONS=""
+			FILE=$1
+			# If the path ends in a / then remove it
+			if [[ ${1:${#1}-1:1} = "/" ]]
+			then
+				FILE=$(echo $FILE | sed 's/.$//')
+			fi
+		else
+			printf "Invalid directory: %s\n" $1
+			exit 1
+		fi
+
+	# If there are zero, two or more arguments, then something is wrong
+	else
+		printf "Unexpected number of arguements. Follow the pattern \"whoowns [directory]\"\n"
+		exit 2
+	fi
+
+}
+
+# Show the help page for the command
+function show_help () {
+	printf "Usage: whoowns [DIRECTORY]\n"
+	printf "Determine the owner of a file or directory\n\n"
+
+	printf "Options:\n"
+	printf " %s \t See this help.\n\n" "-h"
+
+	printf "Exit status:\n"
+	printf " 0 if OK,\n"
+	printf " 1 if invalid directory,\n"
+	printf " 2 if unexpected number of arguments,\n"
+}
+
+function main () {
+	if [[ $OPTIONS = "-h" ]]; then show_help;
+	elif [[ -f $FILE ]]
+	then
+		owner=$(ls -la $FILE | grep "$FILE" | tr -s ' ' | cut -d " " -f 3 | sort -u)
+		printf "Owner of %s is: %s\n" $FILE $owner
+	else
+		cd $FILE
+		cd ..
+		reverse=$(echo $FILE | rev | cut -d "/" -f 1 | rev)
+		owner=$(ls -la | grep "$reverse" | tr -s ' ' | cut -d " " -f 3 | sort -u)
+		printf "Owner of %s is: %s\n" $FILE $owner
+	fi
+	exit 0
+}
+
+parse_arguments $1 $2
+main

@@ -146,6 +146,8 @@ function main () {
 
 	# Biggest file
 	if [[ $OPTIONS =~ "b" ]] || [[ $OPTIONS =~ "a" ]]; then biggest; fi
+
+	exit 0
 }
 
 parse_arguments $1 $2 $3
