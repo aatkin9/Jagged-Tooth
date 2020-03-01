@@ -2,7 +2,7 @@
 
 OPTIONS=$1
 DIR=$2
-VALID='b|s|a'
+VALID='a|b|h|s'
 
 # A function to ensure that the passed options are valid
 # Recieves IN ORDER: options entered, valid options separated by a vertical bar
@@ -18,6 +18,13 @@ function parse_options () {
 	if [[ $1 =~ "a" ]] && [ ${#1} -gt 2 ]
 	then
 		printf "ERROR: Cannot have option \"a\" with other options.\n"
+		exit 2
+	fi
+
+	# If the h option is used, but not the only option, exit
+	if [[ $1 =~ "h" ]] && [ ${#1} -gt 2 ]
+	then
+		printf "ERROR: Cannot have option \"h\" with other options.\n"
 		exit 2
 	fi
 
@@ -88,26 +95,52 @@ function parse_arguments () {
 			printf "%s is not a valid directory.\n" $2
 			exit 7
 		fi
-		parse_options $OPTIONS $VALID
 	else # If there are zero or more arguments, then something is wrong
 		printf "Unexpected number of arguements. Follow the pattern \"filesize (options) (directory)\"\n"
 		exit 6
 	fi
+	parse_options $OPTIONS $VALID
+}
+
+# Show the help page for the command
+function show_help () {
+	printf "Usage: findsize [OPTION]... [DIRECTORY]\n"
+	printf "Find the biggest and smallest file or folder in a directory.\n"
+	printf "All information is shown if none of -bs is specified.\n\n"
+
+	printf "Options:\n"
+	printf " %s \t Show all of the information.\n" "-a"
+	printf " %s \t Show biggest file or directory.\n" "-b"
+	printf " %s \t See this help.\n" "-h"
+	printf " %s \t Show smallest file or directory.\n" "-s"
+
+	printf "Exit status:\n"
+	printf " 0 if OK,\n"
+	printf " 1 if OPTION field does not start with a dash (-),\n"
+	printf " 2 if %s or %s is used with any other option,\n" "-a" "-h"
+	printf " 3 if invalid option,\n"
+	printf " 4 if repeating option,\n"
+	printf " 5 if given a path to a file instead of a directory,\n"
+	printf " 6 if unexpected number of arguments,\n"
+	printf " 7 if directory does not exist.\n"
 }
 
 # Find and print the smallest file in the directory
 function smallest () {
-	printf "Smallest: "
-	echo $(ls -lrS $DIR| awk 'NR==2{print $NF}')
+	printf "%-30s %s\n" "Smallest file or directory:" $(ls -lrS $DIR| awk 'NR==2{print $NF}')
+	#echo $(ls -lrS $DIR| awk 'NR==2{print $NF}')
 }
 
 # Find and print the biggest file in the directory
 function biggest () {
-	printf "Biggest: "
-	echo $(ls -lS $DIR | awk 'NR==2{print $NF}')
+	printf "%-30s %s\n" "Biggest file or directory:" $(ls -lS $DIR| awk 'NR==2{print $NF}')
+	#echo $(ls -lS $DIR | awk 'NR==2{print $NF}')
 }
 
 function main () {
+	# Show the help page
+	if [[ $OPTIONS = "-h" ]]; then show_help; fi
+	
 	# Smallest file
 	if [[ $OPTIONS =~ "s" ]] || [[ $OPTIONS =~ "a" ]]; then smallest; fi
 

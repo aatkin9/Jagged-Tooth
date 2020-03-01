@@ -2,7 +2,7 @@
 
 OPTIONS=""
 USERNAME=""
-VALID="s|u|n|t|h|a"
+VALID="a|d|h|n|s|t|u"
 
 # A function to ensure that the passed options are valid
 # Recieves IN ORDER: options entered, valid options separated by a vertical bar
@@ -18,6 +18,13 @@ function parse_options () {
 	if [[ $1 =~ "a" ]] && [ ${#1} -gt 2 ]
 	then
 		printf "ERROR: Cannot have option \"a\" with other options.\n"
+		exit 2
+	fi
+
+	# If the h option is used, but not the only option, exit
+	if [[ $1 =~ "h" ]] && [ ${#1} -gt 2 ]
+	then
+		printf "ERROR: Cannot have option \"h\" with other options.\n"
 		exit 2
 	fi
 
@@ -57,19 +64,75 @@ function parse_options () {
 
 # Parse the arguments passed to start this script
 function parse_arguments () {
-	if [ $# -eq 1 ] # If there is a one argument, then it is the username
+	# If there is a one argument, then check if it is a username
+	if [ $# -eq 1 ]
 	then
 		OPTIONS="-a"
 		USERNAME=$1
-	elif [ $# -eq 2 ] # If there are two arguments, then it goes options then username
+		# If it is the help option, change the guess
+		if [[ ${USERNAME:0:1} = '-' ]] && [[ ${USERNAME:1:1} = 'h' ]]
+		then
+			OPTIONS=$1
+			USERNAME=""
+			parse_options $OPTIONS $VALID
+
+		# If it is an option that is not help, exit
+		elif [[ ${USERNAME:0:1} = '-' ]]
+		then
+			printf "Unexpected number of arguements. Follow the pattern \"unfo [options] [username]\"\n"
+			exit 5
+		fi
+
+	# If there are two arguments, then it goes options then username
+	elif [ $# -eq 2 ]
 	then
 		OPTIONS=$1
 		USERNAME=$2
 		parse_options $OPTIONS $VALID
-	else # If there are zero or more arguments, then something is wrong
+		# Verify that the username does not start with a dash
+		if [[ ${USERNAME:0:1} = '-' ]]
+		then
+			printf "Invalid username: %s\n" $USERNAME
+			exit 6
+		fi
+
+	# If there are zero or more arguments, then something is wrong
+	else
 		printf "Unexpected number of arguements. Follow the pattern \"unfo [options] [username]\"\n"
 		exit 5
 	fi
+
+	# Ensure that the user exists
+	if [ ! -z $USERNAME ] && [ ! $(grep "$USERNAME" /etc/passwd | wc -l) = "1" ]
+	then 
+		printf "Invalid username: %s\n" $USERNAME
+		exit 6
+	fi
+}
+
+# Show the help page for the command
+function show_help () {
+	printf "Usage: unfo [OPTION]... [USER]\n"
+	printf "Print a variety of different information about a user.\n"
+	printf "All information is shown if none of -dhnstu is specified.\n\n"
+
+	printf "Options:\n"
+	printf " %s \t Show all of the information.\n" "-a"
+	printf " %s \t Show the home directory.\n" "-d"
+	printf " %s \t See this help.\n" "-h"
+	printf " %s \t Show the full name.\n" "-n"
+	printf " %s \t Show the status: Logged in/out.\n" "-s"
+	printf " %s \t Show the time of last log in.\n" "-t"
+	printf " %s \t Show the username.\n\n" "-u"
+
+	printf "Exit status:\n"
+	printf " 0 if OK,\n"
+	printf " 1 if OPTION field does not start with a dash (-),\n"
+	printf " 2 if %s or %s is used with any other option,\n" "-a" "-h"
+	printf " 3 if invalid option,\n"
+	printf " 4 if repeating option,\n"
+	printf " 5 if unexpected number of arguments,\n"
+	printf " 6 if user does not exist.\n"
 }
 
 # Print the username field
@@ -113,6 +176,9 @@ function status () {
 }
 
 function main () {
+	# Show the help page
+	if [[ $OPTIONS = "-h" ]]; then show_help; exit 0; fi
+
 	# Username
 	if [[ $OPTIONS =~ "u" ]] || [[ $OPTIONS =~ "a" ]]; then username; fi
 
@@ -120,13 +186,15 @@ function main () {
 	if [[ $OPTIONS =~ "n" ]] || [[ $OPTIONS =~ "a" ]]; then fullname; fi
 
 	# Home Directory
-	if [[ $OPTIONS =~ "h" ]] || [[ $OPTIONS =~ "a" ]]; then home_dir; fi
+	if [[ $OPTIONS =~ "d" ]] || [[ $OPTIONS =~ "a" ]]; then home_dir; fi
 
 	# Time of last login
 	if [[ $OPTIONS =~ "t" ]] || [[ $OPTIONS =~ "a" ]]; then login_time; fi
 
 	# If the user is currently logged in
 	if [[ $OPTIONS =~ "s" ]] || [[ $OPTIONS =~ "a" ]]; then status; fi
+	
+	exit 0
 }
 
 parse_arguments $1 $2 $3
