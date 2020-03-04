@@ -16,22 +16,28 @@ function parse_arguments() {
 	# If there is one argument, check for for all options
 	elif [ $# -eq 1 ]
 	then
+		# Check if the user needs help
+		if [[ $1 = "-h" ]]
+		then
+			show_help
+			exit 0
+
 		# Check for "yesterday", "today", or "tomorrow"
-		if [[ $1 = "yesterday" ]] || [[ $1 = "today" ]] || [[ $1 = "tomorrow" ]]
+		elif [[ $1 = "yesterday" ]] || [[ $1 = "today" ]] || [[ $1 = "tomorrow" ]]
 		then
 			MONTH=$(date --date="$1" +"%m")
 			DAY=$(date --date="$1" +"%d")
 			YEAR=$(date --date="$1" +"%Y")		
 
 		# Check for a properly formatted date with a / septerator
-		elif [[ $(date -d "${1//-\/}" 2> /dev/null) ]]
+		elif [[ $(date -d "${1//-\/}" 2> /dev/null) ]] && [[ ${#1} -gt 9 ]]
 		then
 			MONTH=$(echo $1 | cut -d '/' -f 1)
 			DAY=$(echo $1 | cut -d '/' -f 2)
 			YEAR=$(echo $1 | cut -d '/' -f 3)
 
 		# Check for a properly formatted date with a - septerator
-		elif [[ $(date -d "${1//-//}" 2> /dev/null) ]]
+		elif [[ $(date -d "${1//-//}" 2> /dev/null) ]] && [[ ${#1} -gt 9 ]]
 		then
 			MONTH=$(echo $1 | cut -d '-' -f 1)
 			DAY=$(echo $1 | cut -d '-' -f 2)
@@ -50,6 +56,18 @@ function parse_arguments() {
 	fi
 
 	URL="https://www.checkiday.com/$MONTH/$DAY/$YEAR"
+}
+
+# Show the help page for the command
+function show_help () {
+	printf "Usage: holidays [DATE_STRING]\n"
+	printf "Show a list of holidays from www.checkiday.com for a specific date.\n"
+	printf "Today's holidays are shown if no date string is specified.\n\n"
+
+	printf "Exit status:\n"
+	printf " 0 if OK,\n"
+	printf " 1 if invalid date argument,\n"
+	printf " 2 if unexpected number of arguments.\n"
 }
 
 function main() {
@@ -79,7 +97,7 @@ function main() {
 		echo "* $curr"
 		i=$[$i+4]
 	done
-
+	exit 0
 }
 
 parse_arguments $1 $2
