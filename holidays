@@ -1,0 +1,86 @@
+#!/bin/bash
+
+URL="https://www.checkiday.com/12/25/2020"
+MONTH=0
+DAY=0
+YEAR=0
+
+function parse_arguments() {
+	# If there are no arguments, then do today's holidays
+	if [ $# -eq 0 ]
+	then
+		MONTH=$(date +"%m")
+		DAY=$(date +"%d")
+		YEAR=$(date +"%Y")
+
+	# If there is one argument, check for for all options
+	elif [ $# -eq 1 ]
+	then
+		# Check for "yesterday", "today", or "tomorrow"
+		if [[ $1 = "yesterday" ]] || [[ $1 = "today" ]] || [[ $1 = "tomorrow" ]]
+		then
+			MONTH=$(date --date="$1" +"%m")
+			DAY=$(date --date="$1" +"%d")
+			YEAR=$(date --date="$1" +"%Y")		
+
+		# Check for a properly formatted date with a / septerator
+		elif [[ $(date -d "${1//-\/}" 2> /dev/null) ]]
+		then
+			MONTH=$(echo $1 | cut -d '/' -f 1)
+			DAY=$(echo $1 | cut -d '/' -f 2)
+			YEAR=$(echo $1 | cut -d '/' -f 3)
+
+		# Check for a properly formatted date with a - septerator
+		elif [[ $(date -d "${1//-//}" 2> /dev/null) ]]
+		then
+			MONTH=$(echo $1 | cut -d '-' -f 1)
+			DAY=$(echo $1 | cut -d '-' -f 2)
+			YEAR=$(echo $1 | cut -d '-' -f 3)
+
+		# Otherwise throw an error
+		else
+			printf "Invalid date argument: %s\n" $1
+			exit 1
+		fi
+
+	# If there is more than one argument, throw an error
+	else
+		printf "Unexpected number of arguments\n"
+		exit 2
+	fi
+
+	URL="https://www.checkiday.com/$MONTH/$DAY/$YEAR"
+}
+
+function main() {
+	# Counting variable
+	i=7
+	j=1
+
+	# Get the unparsed list of holidays
+	list=$(curl $URL -s | awk 'NR==198{print}')
+
+	# Determine the amount of holidays
+	how_many=$(tr -dc '/' <<< $list | wc -c)
+
+	# Print each holiday after parsing it
+	echo ",==========================,"
+	echo "| Holidays for: $MONTH/$DAY/$YEAR |"
+	echo "\`==========================\`"
+	while [[ $i -lt $how_many ]] || [[ $i -eq $how_many ]] && [[ ! list = "" ]]
+	do
+		# Get the holiday name
+		curr=$(echo $list | cut -d '/' -f $i | cut -d '"' -f 1)
+
+		# Replace hyphens with spaces, and convert to title case
+		curr=$(echo $curr | sed 's/-/ /g' | sed 's/.*/\L&/; s/[a-z]*/\u&/g')
+
+		# Print the holiday and increment the position
+		echo "* $curr"
+		i=$[$i+4]
+	done
+
+}
+
+parse_arguments $1 $2
+main
