@@ -30,14 +30,11 @@
     * -t: Print the time of last log in.
     * -d: Print the home directory.
     * -h: Print the help information.
-* findsize
-  * findsize [option] \(directory)
-  * Find the largest/smallest file or directory.
+* holidays
+  * holidays [dateString]
+  * Show a list of holidays from www.checkiday.com for a specific date
   * Options...
-    * -a: Find the biggest and smallest file or directory.
-    * -b: Find the biggest file or directory.
-    * -s: Find the smallest file or directory.
-    * -h: Print the help information.
+    * -h: Print the help information
 * whoowns
   * whoowns [directory]
   * Determine the owner of a file or directory.
