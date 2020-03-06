@@ -45,7 +45,7 @@ function show_help () {
 	printf "Exit status:\n"
 	printf " 0 if OK,\n"
 	printf " 1 if invalid directory,\n"
-	printf " 2 if unexpected number of arguments,\n"
+	printf " 2 if unexpected number of arguments.\n"
 }
 
 function main () {

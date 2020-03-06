@@ -1,58 +1,175 @@
 #!/bin/bash
 
 URL="https://www.checkiday.com/12/25/2020"
+FILE="/home/$(whoami)/bin/otherHolidays.txt"
 MONTH=0
 DAY=0
 YEAR=0
+NAME=""
 
-function parse_arguments() {
-	# If there are no arguments, then do today's holidays
-	if [ $# -eq 0 ]
+OPTIONS=""
+VALID="a|c|d|h|l|o"
+
+# A function to ensure that the passed options are valid
+# Recieves IN ORDER: options entered, valid options separated by a vertical bar
+function parse_options () {
+	# If options do not start with a dash, exit
+	if [ ! ${1:0:1} = '-' ]
 	then
+		printf "ERROR: Options must start with a dash (-).\n"
+		exit 1
+	fi
+
+	# If the a option is used, but not the only option, exit
+	if [[ $1 =~ "a" ]] && [ ${#1} -gt 2 ]
+	then
+		printf "ERROR: Cannot have option \"a\" with other options.\n"
+		exit 2
+	fi
+
+	# If the h option is used, but not the only option, exit
+	if [[ $1 =~ "h" ]] && [ ${#1} -gt 2 ]
+	then
+		printf "ERROR: Cannot have option \"h\" with other options.\n"
+		exit 2
+	fi
+
+	# For every character of the entered options
+	# Starting at 1, because the character 0 should be a dash, not a letter
+	i="1"
+	j="2"
+	while [ $i -lt ${#1} ]
+	do
+		# Get the ith character
+		curr=${1:i:1}
+
+		# If the character is not in the valid options, exit
+		if [[ ! $curr =~ $2 ]]
+		then
+			printf "ERROR: Invalid option: "$curr".\n"
+			exit 3
+		fi
+
+		# If the character repeats later, exit
+		while [ $j -lt ${#1} ]
+                do
+                        if [ $curr = ${1:j:1} ]
+                        then
+                                printf "ERROR: Repeat option: "$curr".\n"
+                                exit 4
+                        fi
+                        j=$[$j+1]
+                done
+
+		# Update the positions
+		i=$[$i+1]
+		j=$[$i+1]
+	done
+}
+
+# Parse a string to determine if it is a dateString
+function parse_date () {
+	# If the date ends in xxxx and the second argument is present, then replace xxxx with a dummy year
+	temp=$1; isDummy=false
+	if [[ $(echo $temp | rev | cut -d "/" -f 1 ) = "xxxx" ]] && [[ $2 = true ]]
+	then
+		temp=$(echo $temp | sed 's/x/9/g')
+		isDummy=true
+	fi
+
+	# Check for "yesterday", "today", or "tomorrow"
+	if [[ $temp = "yesterday" ]] || [[ $temp = "today" ]] || [[ $temp = "tomorrow" ]]
+	then
+		MONTH=$(date --date="$temp" +"%m")
+		DAY=$(date --date="$temp" +"%d")
+		YEAR=$(date --date="$temp" +"%Y")
+
+	# Check for a properly formatted date with a / septerator
+	elif [[ $(date -d "${temp//-\/}" 2> /dev/null) ]] && [[ ${#temp} -gt 9 ]]
+	then
+		MONTH=$(echo $temp | cut -d '/' -f 1)
+		DAY=$(echo $temp | cut -d '/' -f 2)
+		YEAR=$(echo $temp | cut -d '/' -f 3)
+
+	# Check for a properly formatted date with a - septerator
+	elif [[ $(date -d "${temp//-//}" 2> /dev/null) ]] && [[ ${#temp} -gt 9 ]]
+	then
+		MONTH=$(echo $temp | cut -d '-' -f 1)
+		DAY=$(echo $temp | cut -d '-' -f 2)
+		YEAR=$(echo $temp | cut -d '-' -f 3)
+
+	# Otherwise throw an error
+	else
+		printf "Invalid date argument: %s\n" $temp
+		exit 5
+	fi
+
+	# If a dummy year was used, replace it with xxxx
+	if [[ $isDummy = true ]]; then YEAR="xxxx"; fi
+}
+
+# Parse the arguments passed to start this script
+function parse_arguments() {
+	# If there are no arguments, then do all of today's holidays
+	if [ $# -eq 1 ] && [[ -z $3 ]]
+	then
+		OPTIONS="-a"
 		MONTH=$(date +"%m")
 		DAY=$(date +"%d")
 		YEAR=$(date +"%Y")
 
-	# If there is one argument, check for for all options
-	elif [ $# -eq 1 ]
+	# If there is one argument, then it could be options or a dateString
+	elif [ $# -eq 2 ] && [[ -z $3 ]]
 	then
-		# Check if the user needs help
-		if [[ $1 = "-h" ]]
+		# If it is just options, parse and do today's holidays
+		if [[ ${1:0:1} = '-' ]]
 		then
-			show_help
-			exit 0
+			MONTH=$(date +"%m")
+			DAY=$(date +"%d")
+			YEAR=$(date +"%Y")
+			OPTIONS=$1
+			parse_options $OPTIONS $VALID
+			if [[ $OPTIONS =~ "c" ]] || [[ $OPTIONS =~ "d" ]]
+			then
+				printf "Unexpected number of arguments\n"
+				exit 6
+			fi
 
-		# Check for "yesterday", "today", or "tomorrow"
-		elif [[ $1 = "yesterday" ]] || [[ $1 = "today" ]] || [[ $1 = "tomorrow" ]]
-		then
-			MONTH=$(date --date="$1" +"%m")
-			DAY=$(date --date="$1" +"%d")
-			YEAR=$(date --date="$1" +"%Y")		
-
-		# Check for a properly formatted date with a / septerator
-		elif [[ $(date -d "${1//-\/}" 2> /dev/null) ]] && [[ ${#1} -gt 9 ]]
-		then
-			MONTH=$(echo $1 | cut -d '/' -f 1)
-			DAY=$(echo $1 | cut -d '/' -f 2)
-			YEAR=$(echo $1 | cut -d '/' -f 3)
-
-		# Check for a properly formatted date with a - septerator
-		elif [[ $(date -d "${1//-//}" 2> /dev/null) ]] && [[ ${#1} -gt 9 ]]
-		then
-			MONTH=$(echo $1 | cut -d '-' -f 1)
-			DAY=$(echo $1 | cut -d '-' -f 2)
-			YEAR=$(echo $1 | cut -d '-' -f 3)
-
-		# Otherwise throw an error
+		# If it's anything else, parse assuming date
 		else
-			printf "Invalid date argument: %s\n" $1
-			exit 1
+			parse_date $1
+			OPTIONS="-a"
 		fi
 
-	# If there is more than one argument, throw an error
+	# If there are two arguments, then it must be options and dateString
+	elif [ $# -eq 3 ] && [[ -z $3 ]]
+	then
+		OPTIONS=$1
+		parse_options $OPTIONS $VALID
+		parse_date $2
+		if [[ $OPTIONS =~ "c" ]] || [[ $OPTIONS =~ "d" ]]
+		then
+			printf "Unexpected number of arguments\n"
+			exit 6
+		fi
+
+	# If there are three arguments, then it must be valid options and dateString and name
+	elif [ $# -eq 3 ]
+	then
+		OPTIONS=$1
+		parse_options $OPTIONS $VALID
+		if [[ ${#OPTIONS} -gt 2 ]] || [[ ! ${OPTIONS:1:1} = 'c' ]] && [[ ! ${OPTIONS:1:1} = 'd' ]]
+		then
+			printf "Unexpected number of arguments\n"
+			exit 6
+		fi
+		parse_date $2 true
+		NAME=$3
+
+	# If there is more than three argument, throw an error
 	else
 		printf "Unexpected number of arguments\n"
-		exit 2
+		exit 6
 	fi
 
 	URL="https://www.checkiday.com/$MONTH/$DAY/$YEAR"
@@ -60,20 +177,35 @@ function parse_arguments() {
 
 # Show the help page for the command
 function show_help () {
-	printf "Usage: holidays [DATE_STRING]\n"
-	printf "Show a list of holidays from www.checkiday.com for a specific date.\n"
-	printf "Today's holidays are shown if no date string is specified.\n\n"
+	printf "Usage: holidays [OPTIONS] [DATE_STRING] [HOLIDAY_NAME]\n"
+	printf "Show a list of holidays from a local list and www.checkiday.com for a date.\n"
+	printf "Insert and delete local holidays using the appropriate commands.\n"
+	printf "Today's local and online holidays are shown if no date string is specified.\n\n"
+
+	printf "Options:\n"
+	printf " %s \t Show both online and local holidays.\n" "-a"
+	printf " %s \t Create a local holiday.\n" "-c"
+	printf " %s \t Delete a local holiday.\n" "-d"
+	printf " %s \t See this help.\n" "-h"
+	printf " %s \t Show only local holidays.\n" "-l"
+	printf " %s \t Show only online holidays.\n\n" "-o"
 
 	printf "Exit status:\n"
 	printf " 0 if OK,\n"
-	printf " 1 if invalid date argument,\n"
-	printf " 2 if unexpected number of arguments.\n"
+	printf " 1 if OPTION field does not start with a dash (-),\n"
+	printf " 2 if %s or %s is used with any other option,\n" "-a" "-h"
+	printf " 3 if invalid option,\n"
+	printf " 4 if repeating option,\n"
+	printf " 5 if invalid date argument,\n"
+	printf " 6 if unexpected number of arguments,\n"
+	printf " 7 if attempted to deleted a nonexisting holiday,\n"
+	printf " 8 if attempted to create a duplicate holiday.\n"
 }
 
-function main() {
+# Get the holidays from www.checkiday.com
+function online_holidays () {
 	# Counting variable
 	i=7
-	j=1
 
 	# Get the unparsed list of holidays
 	list=$(curl $URL -s | awk 'NR==198{print}')
@@ -81,10 +213,7 @@ function main() {
 	# Determine the amount of holidays
 	how_many=$(tr -dc '/' <<< $list | wc -c)
 
-	# Print each holiday after parsing it
-	echo ",==========================,"
-	echo "| Holidays for: $MONTH/$DAY/$YEAR |"
-	echo "\`==========================\`"
+	# Print each holiday from online after parsing the list
 	while [[ $i -lt $how_many ]] || [[ $i -eq $how_many ]] && [[ ! list = "" ]]
 	do
 		# Get the holiday name
@@ -97,8 +226,93 @@ function main() {
 		echo "* $curr"
 		i=$[$i+4]
 	done
+}
+
+# Get the holidays from the local system
+function offline_holidays () {
+	# Counting variable
+	i=1
+
+	# Get the unparsed list of holidays
+	list=$(grep "$MONTH/$DAY" $FILE)
+
+	# Determine the amount of holidays
+	how_many=$(tr -dc '=' <<< $list | wc -c)
+
+	while [[ $i -lt $how_many ]] || [[ $i -eq $how_many ]] && [[ ! list = "" ]]
+	do
+		# Get the holiday
+		curr=$(echo $list | cut -d "=" -f $[$i+1] | cut -d "+" -f 1)
+
+		# Determine the frequency of this holiday
+		freq=$(echo $list | cut -d "=" -f $i | rev | cut -d "/" -f 1 | rev)
+
+		# If the holiday happens every year or specifically the provided year, print it
+		if [[ $freq = "xxxx" ]] || [[ $freq = $YEAR ]]
+		then
+			echo "* $curr"
+		fi
+
+		# Increment the position
+
+		i=$[$i+1]
+	done
+}
+
+# Add a holiday to the local file
+function create_holiday () {
+	temp=$(grep "$MONTH/$DAY/$YEAR=$NAME+" $FILE)
+	if [[ -z $temp ]]
+	then
+		printf "Adding \"%s\" on %s/%s/%s as a holiday.\n" "$NAME" $MONTH $DAY $YEAR
+		echo "$MONTH/$DAY/$YEAR=$NAME+" >> $FILE
+	else
+		printf "\"%s\" already exists on %s/%s/%s as a holiday.\n" "$NAME" $MONTH $DAY $YEAR
+		exit 8
+	fi
+}
+
+# Delete a holiday from the local file
+function delete_holiday () {
+	temp=$(grep "$MONTH/$DAY/$YEAR=$NAME+" $FILE)
+	if [[ -z $temp ]]
+	then
+		printf "Unable to find holiday by the name of \"%s\" on %s\n" "$NAME" "$MONTH/$DAY/$YEAR"
+		exit 7
+	else
+		printf "Deleting \"%s\" on $MONTH/$DAY/$YEAR as a holiday.\n" "$NAME"
+		sed -i "/$MONTH\/$DAY\/$YEAR=$NAME+/d" $FILE
+	fi
+}
+
+# Print the header
+function print_header () {
+	echo ",==========================,"
+	echo "| Holidays for: $MONTH/$DAY/$YEAR |"
+	echo "\`==========================\`"
+}
+
+function main() {
+	# Show the help page
+	if [[ $OPTIONS = "-h" ]]; then show_help; exit 0; fi
+
+	# Print the header	
+	if [[ $OPTIONS =~ "a" ]] || [[ $OPTIONS =~ "l" ]] || [[ $OPTIONS =~ "o" ]]; then print_header; fi
+
+	# Print the online holidays
+	if [[ $OPTIONS =~ "a" ]] || [[ $OPTIONS =~ "o" ]]; then online_holidays; fi
+
+	# Print the local holidays
+	if [[ $OPTIONS =~ "a" ]] || [[ $OPTIONS =~ "l" ]]; then offline_holidays; fi
+
+	# Create a holiday to the local file
+	if [[ $OPTIONS =~ "c" ]]; then create_holiday; fi
+
+	# Delete a holiday from the local file
+	if [[ $OPTIONS =~ "d" ]]; then delete_holiday; fi
+
 	exit 0
 }
 
-parse_arguments $1 $2
+parse_arguments $1 $2 "$3" $4
 main
