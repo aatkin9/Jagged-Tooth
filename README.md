@@ -31,10 +31,16 @@
     * -d: Print the home directory.
     * -h: Print the help information.
 * holidays
-  * holidays [dateString]
-  * Show a list of holidays from www.checkiday.com for a specific date
+  * holidays (options) [dateString] (holidayName, if -c or -d)
+  * Show a list of holidays from a local list and www.checkiday.com for a date
+  * Insert and delete local holidays using the appropriate commands.
   * Options...
+    * -a: Show both online and local holidays
+    * -c: Create a local holiday
+    * -d: Delete a local holiday
     * -h: Print the help information
+    * -l: Show only local holidays
+    * -o: Show only online holidays
 * whoowns
   * whoowns [directory]
   * Determine the owner of a file or directory.
