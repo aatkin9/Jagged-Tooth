@@ -52,12 +52,12 @@ function parse_options () {
                                 printf "ERROR: Repeat option: "$curr".\n"
                                 exit 4
                         fi
-                        j=$[$j+1]
+                        ((j=j+1))
                 done
 
 		# Update the positions
-		i=$[$i+1]
-		j=$[$i+1]
+		((i=i+1))
+		((j=i+1))
 	done
 }
 
